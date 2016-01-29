@@ -1,5 +1,5 @@
 ========================================================================
-    CONSOLE APPLICATION : anagrams Project Overview
+								anagrams
 ========================================================================
 
 AppWizard has created this anagrams application for you.
