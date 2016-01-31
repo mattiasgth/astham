@@ -3,13 +3,110 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>TypeScript HTML App</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
+    <title>Tanto Anagram</title>
+    <link rel="stylesheet" href="jquery/jquery-ui.min.css">
+    <!-- Bootstrap core CSS -->
+    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="bootstrap/css/bootstrap-select.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="app.css" type="text/css" />
-    <script src="app.js"></script>
-</head>
+    </head>
 <body>
-    <h1>TypeScript HTML App</h1>
+    <nav class="navbar navbar-inverse">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/"><span class="bold">tanto system</span> | anagrams</a>
+            </div>
+            <div id="navbar" class="collapse navbar-collapse">
+                <ul class="nav navbar-nav">
+                    <li class="active"><a href="#">Home</a></li>
+                    <li><a href="/">About</a></li>
+                    <li><a href="/">Contact</a></li>
+                </ul>
+            </div><!--/.nav-collapse -->
+        </div>
+    </nav>
+    <div class="container" role="main">
+        <div class="btn-group" role="group" aria-label="...">
+            <button type="button" class="btn btn-default" id="clear"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button>
+            <button type="button" class="btn btn-default" id="lock"><span class="glyphicon glyphicon-lock" aria-hidden="true"></span></button>
+            <button type="button" class="btn btn-default has-spinner" id="lookup"><span id="spinning-refresh" class="glyphicon glyphicon-refresh" aria-hidden="true"></span></button>
+            <button type="button" class="btn btn-default" id="settings" data-toggle="modal" data-target="#settingsModal"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></button>
+            <select id="lang" class="selectpicker">
+                <option value="sv">Swedish</option>
+                <option value="en" selected="selected">English</option>
+            </select>
+        </div>
+        <div id="board" class="row green" tabindex="0">
+            <div id="ghost-select" class="ghost-select">
+                <span>
+                </span>
+            </div>
+            <svg id="parentSVG" width="100%" height="100%" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1"></svg>
+        </div>
+        <div class="infotext row">
+            <div class="col-lg-6">
+                <h4>Instructions</h4>
+                <p>
+                    To start making anagrams, click the <span class="glyphicon glyphicon-refresh" aria-hidden="false"></span> button in the toolbar.
+                    You can select and rearrange letters using the mouse, or press <span class="keyboard-key">DEL</span> to delete the selected letters.
+                    If you click the <span class="glyphicon glyphicon-remove"></span> button in the toolbar, all letters are erased.
+                    You can also remove all letters by pressing <span class="keyboard-key">ESC</span> on the keyboard.
+                    To lock certain letters, select them using the mouse and click the <span class="glyphicon glyphicon-lock"></span> button in the toolbar.
+                </p>
+                <p>
+                    The anagrams returned come in a certain sequence, and when you click the <span class="glyphicon glyphicon-refresh" aria-hidden="false"></span> button,
+                    you collect the next anagram in the sequence. If you want to go back to a previous anagram in the sequence, hold down <span class="keyboard-key">SHIFT</span> on your keyboard when you click.
+                </p>
+            </div>
+            <div class="col-lg-6">
+                <h4>Anagrams</h4>
+                <p>
+                    An <b>anagram</b> (gr. <i>αναγραμματισμος, anagrammatismos</i>, 'to rearrange letters') of a word is the result of rearranging the letters in that word, to form a new word or a phrase.
+                    It's a game with words that has been known since antiquity, and has been associated with numerology and mysticism.
+                    It was common in the Jewish kabbalistic tradition during the Middle-ages, but also in renaissance and baroque Europe.
+                    However, the main purpose of making anagrams is of course pure recreation.
+                </p>
+                <p>
+                    In modern times, anagrams has been used by surrealist poets such as <a href="https://en.wikipedia.org/wiki/André Breton">Andre Breton</a> and <a href="https://en.wikipedia.org/wiki/Gunnar Ekelöf">Gunnar Ekelöf</a>
+                    One very common application of the anagram idea is the refrigerator magnet poetry kits, where each magnet in the kit correspond to a certain word.
+                </p>
+        </div>
+        </div>
+        <footer class="footer">
+            <p>&copy; 2016 Tantolunden System HB. Icons provided by <a href="http://glyphicons.com/">Glyphicons.com</a>.</p>
+        </footer>
+    </div>
+    <!-- settings -->
+    <div id="settingsModal" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Advanced settings</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Not implemented yet!</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+            </div>
 
-    <div id="content"></div>
+        </div>
+    </div>
+    <script src="jquery/jquery-1.12.0.min.js"></script>
+    <script src="jquery/jquery-ui.min.js"></script>
+    <script src="bootstrap/js/bootstrap.min.js"></script>
+    <script src="bootstrap/js/bootstrap-select.min.js"></script>
+    <script src="modernizr.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

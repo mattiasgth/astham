@@ -18,8 +18,12 @@
     <IISExpressUseClassicPipelineMode />
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="api.class.php" />
+    <Content Include="api.php" />
     <Content Include="app.css" />
+    <Content Include="images\seamless_green.jpg" />
     <Content Include="index.html" />
+    <Content Include="modernizr.js" />
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>
