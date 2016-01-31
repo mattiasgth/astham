@@ -82,7 +82,7 @@ public:
 	}
 	template<typename T> void Cross(T& pos)
 	{
-		for (T::iterator it = pos.begin(); it != pos.end(); it++){
+		for (typename T::iterator it = pos.begin(); it != pos.end(); it++){
 			Cross(*it);
 		}
 	}
@@ -94,7 +94,7 @@ public:
 	template<typename T> void Uncross(String& s, T& pos)
 	{
 		int idx = 0;
-		for (T::iterator it = pos.begin(); it != pos.end(); it++){
+		for (typename T::iterator it = pos.begin(); it != pos.end(); it++){
 			Uncross(s[idx++], *it);
 		}
 	}

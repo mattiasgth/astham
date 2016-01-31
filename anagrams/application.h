@@ -11,7 +11,7 @@ public:
 	bool CmdOptionExists(wchar_t** begin, wchar_t** end, const std::wstring& option);
 };
 
-void ReportError(char* pszMsg);
+void ReportError(const char* pszMsg);
 
 /*
 *
@@ -19,10 +19,10 @@ void ReportError(char* pszMsg);
 *
 */
 #ifndef NDEBUG
-void ApplicationTrace(LPCTSTR, ...);
+void ApplicationTrace(const wchar_t*, ...);
 #	define TRACE		::ApplicationTrace
 #else
-inline void ApplicationTrace(LPCTSTR, ...) { }
+inline void ApplicationTrace(const wchar_t*, ...) { }
 #	define TRACE		1 ? (void)0 : ::ApplicationTrace
 #endif
 
