@@ -3,10 +3,47 @@
 #include "anagrams.h"
 #include "dictionary.h"
 #include <fzindex.h>
+#include <string.h>
 #include <string>
 #include <map>
 #include <algorithm>
 #include <iostream>
+
+#ifndef __STDC_LIB_EXT1__
+
+typedef int errno_t;
+
+errno_t fopen_s(FILE** streamptr,
+	const char* filename,
+	const char* mode)
+{
+	*streamptr = fopen(filename, mode);
+	return *streamptr ? 0 : errno;
+}
+
+int MulDiv(
+  int nNumber,
+  int nNumerator,
+  int nDenominator
+)
+{
+	return nNumber*nNumerator/nDenominator;
+}
+
+wchar_t *_wcsdup(
+   const wchar_t *strSource 
+)
+{
+	size_t s = wcslen(strSource);
+	wchar_t* rslt = (wchar_t*)malloc(sizeof(wchar_t)*(s+1));
+	wcscpy(rslt, strSource);
+	return rslt;
+}
+
+
+#endif
+
+
 
 Dictionary::Dictionary(int seed)
  :  m_gen(seed),
@@ -23,22 +60,29 @@ Dictionary::~Dictionary()
 {
 }
 
-Dictionary::DICTIONARY_FILE_TYPE Dictionary::DetectFileType(String strPath)
+int Dictionary::GetNodeCount()
+{
+	return m_pTree->lNumNodes;
+}
+
+int Dictionary::GetStoredCount()
+{
+	return m_pTree->lNumStored;
+}
+
+
+Dictionary::DICTIONARY_FILE_TYPE Dictionary::DetectFileType(std::string& strPath)
 {
 	size_t n;
 	FILE* fp;
-	unsigned char szBuf[1024];
-	int tst = IS_TEXT_UNICODE_UNICODE_MASK;
 	size_t rs;
-
-	CHAR szNameMB[MAX_PATH];
-	size_t nConverted;
-	wcstombs_s(&nConverted, szNameMB, MAX_PATH, strPath.c_str(), MAX_PATH);
-
-	if (TstCheckFileHeader(szNameMB) == TST_ERROR_SUCCESS)
+	unsigned char szBuf[1024];
+	if (TstCheckFileHeader(strPath.c_str()) == TST_ERROR_SUCCESS)
 		return DFT_BINARY;
 
-	if (fopen_s(&fp, szNameMB, "rb") != 0){
+	fp = fopen(strPath.c_str(), "rb");
+
+	if (fp == NULL){
 		return DFT_NONE;
 	}
 
@@ -46,7 +90,8 @@ Dictionary::DICTIONARY_FILE_TYPE Dictionary::DetectFileType(String strPath)
 	memset(szBuf, 0, sizeof(szBuf));
 	rs = fread(szBuf, 1, 1024, fp);
 	fclose(fp);
-
+#ifdef WIN32
+	int tst = IS_TEXT_UNICODE_UNICODE_MASK;
 	if (IsTextUnicode(szBuf, rs, &tst)){
 		// IsTextUnicode isn't the most
 		// stable of the Win32 functions ...
@@ -54,27 +99,42 @@ Dictionary::DICTIONARY_FILE_TYPE Dictionary::DetectFileType(String strPath)
 			return DFT_NONE;
 		return DFT_TEXT;
 	}
+#endif
+
+	// some known BOM markers
+	if(szBuf[0] == 0xff && szBuf[1] == 0xfe){
+		return DFT_TEXT;
+	}
+
+	if(szBuf[1] == 0xff && szBuf[0] == 0xfe){
+		return DFT_TEXT;
+	}
+
+
 
 	for (n = 0; n < rs; n++){
 		if (szBuf[n] < 9){
-			return DFT_NONE;
+			// probably UTF16
+			char mbs[4096];
+			if(wcstombs(mbs, (const wchar_t*)szBuf, 4096) == (size_t)-1){
+				std::cerr << "not a UTF16 file" << std::endl;
+				wprintf(L"Text is %s\n", szBuf);
+				return DFT_NONE;
+			}
+			break;
 		}
 	}
 
 	return DFT_TEXT;
 }
 
-DICT_ERROR Dictionary::ReadBinaryFile(String strPath)
+DICT_ERROR Dictionary::ReadBinaryFile(std::string& strPath)
 {
 	long rslt;
 	TstDestroyTree(m_pTree);
 	m_pTree = TstInitTree();
 
-	CHAR szNameMB[MAX_PATH];
-	size_t nConverted;
-	wcstombs_s(&nConverted, szNameMB, MAX_PATH, strPath.c_str(), MAX_PATH);
-
-	rslt = TstAttachToFile(m_pTree, szNameMB, TRUE);
+	rslt = TstAttachToFile(m_pTree, strPath.c_str(), true);
 	if (rslt == -2)
 		return DE_BAD_VERSION;
 	if (rslt == -1)
@@ -89,12 +149,15 @@ DICT_ERROR Dictionary::SaveBinaryFile(std::string& strPath)
 }
 
 
-DICT_ERROR Dictionary::ReadTextFile(String strPath)
+DICT_ERROR Dictionary::ReadTextFile(std::string& strPath, bool fIsUTF16)
 {
-	wchar_t buf[2048];
+	unsigned char buf[2048];
+	wchar_t* wp = (wchar_t*)buf;
 	FILE* fp;
 
-	if (_tfopen_s(&fp, strPath.c_str(), _T("rb")) != 0)
+	fp = fopen(strPath.c_str(), "rb");
+
+	if (fp == NULL)
 		return DE_FAILED_OPEN;
 
 	TstDestroyTree(m_pTree);
@@ -103,10 +166,12 @@ DICT_ERROR Dictionary::ReadTextFile(String strPath)
 	/* test for Unicode signatures */
 	size_t r;
 	int tst;
+	unsigned lineno = 0;
+	size_t start = 0;
 
 	r = fread(buf, 1, 512, fp);
-
-	if (!IsTextUnicode(buf, r, &tst)){
+#ifdef WIN32
+	if (!IsTextUnicode(wp, r, &tst)){
 		/* text mode will do ANSI->Unicode conversion */
 		fclose(fp);
 		_tfopen_s(&fp, strPath.c_str(), _T("r"));
@@ -115,19 +180,45 @@ DICT_ERROR Dictionary::ReadTextFile(String strPath)
 		/* binary mode will do no conversion */
 		rewind(fp);
 		if (tst & IS_TEXT_UNICODE_SIGNATURE){
-			fread(buf, 2, 1, fp);
+			start = 2;
 		}
 	}
-
+#else
+	if(buf[0] == 0xff && buf[1] == 0xfe)
+		start = 2;
+#endif
+	fseek(fp, start, SEEK_SET);
+	if(m_verbose)
+		std::cerr << "reading from offset " << start << std::endl;
 	while (!feof(fp)){
-		if (!fgetws(buf, 2048, fp))
-			break;
-		if (!ParseTextLine(buf)){
+		if(fIsUTF16){
+			lineno++;
+			if (!fgetws(wp, 2048, fp)){
+				std::cerr << "finished reading at line " << lineno << std::endl;
+				break;
+			}
+		}
+		else{
+			char mbs[2048];
+			size_t convres;
+			lineno++;
+			fgets(mbs, 2048, fp);
+			convres = mbstowcs(wp, mbs, 2048);
+			if(convres == (size_t)-1){
+				std::cerr << "error reading line " << lineno << ", bad conversion" << std::endl;
+				return DE_BAD_FORMAT;
+			}
+		}
+		if (!ParseTextLine(wp)){
+			std::cerr << "cannot parse line " << lineno << std::endl;
 			fclose(fp);
 			return DE_BAD_FORMAT;
 		}
 	}
 
+	if(m_verbose){
+		std::cerr << "read " << lineno << " number of lines" << std::endl;
+	}
 	fclose(fp);
 	return DE_NONE;
 }
@@ -135,12 +226,35 @@ DICT_ERROR Dictionary::ReadTextFile(String strPath)
 
 bool Dictionary::ParseTextLine(const wchar_t* pszLine)
 {
+	bool reading_alpha = false;
+	std::wstring s;
+	const wchar_t* psz = pszLine;
+	while(*psz){
+		if(iswalpha(*psz)){
+			reading_alpha = true;
+			s.push_back(*psz);
+		}
+		else{
+			if(reading_alpha){
+				TstStoreString(m_pTree, (CPCHAR_T)s.c_str(), NULL, 0);
+				s.clear();
+			}
+			reading_alpha = false;
+		}
+		psz++;
+	}
+	return true;
+
+#ifndef WIN32
+	std::cerr << "Error: ParseTextLine not implemented on this platform" << std::endl;
+	return false;
+#else
 	// TODO: use isalpha or similar instead
 	static LPCWSTR kszSeparators = L" .;,:!?\"#¤%&/()=\\+}{}[]$£@0123456789\t\r\n";
 	// should do this with stl, but who knows
 	// what to use?
-	LPWSTR pszCopy;
-	LPWSTR pszTok;
+	wchar_t* pszCopy;
+	wchar_t* pszTok;
 	wchar_t* pszContext;
 
 	pszCopy = _wcsdup(pszLine);
@@ -156,14 +270,15 @@ bool Dictionary::ParseTextLine(const wchar_t* pszLine)
 		pszTok = wcstok_s(NULL, kszSeparators, &pszContext);
 	} while (pszTok);
 	free(pszCopy);
-	return TRUE;
+	return true;
+#endif
 }
 
 int Dictionary::ReFindFirstCompleteAnagram(size_t pos, AnagramResult& lst_out, CharacterRack& rack)
 {
 	TRI_FILE_NODE fn;
 	size_t rackPos;
-	WCHAR c = GetNode(pos, fn);
+	char c = GetNode(pos, fn);
 	if (rack.IsEmpty()){		
 		return 0; // no more letters to work with
 	}
@@ -233,7 +348,7 @@ int Dictionary::FindFirstCompleteAnagram(String& strInput, AnagramResult& rsltOu
 
 int Dictionary::Generate(String& strInput, AnagramResult& rsltOut, bool fGenerateWordsOnly, unsigned maxResults /* = 256*/)
 {
-	bool fBreak = FALSE;
+	bool fBreak = false;
 	StringList::iterator slit;
 
 	if (m_pTree == NULL){
@@ -340,7 +455,7 @@ int Dictionary::ReGenerate(size_t pos, AnagramResult& rslt, CharacterRack& rack,
 	return 0;
 }
 
-bool SortByLen(String& s1, String& s2)
+bool SortByLen(const String& s1, const String& s2)
 {
 	return s1.size() > s2.size();
 }
@@ -432,7 +547,8 @@ bool Dictionary::ReMakeCombines(StringArray& v, int idx, CombMap& mapLetters, Ch
 	WCHAR cFirst;
 
 	cFirst = rack.FindFirstNonCrossed();
-	_ASSERT(cFirst != '\0'); // should never end up here with empty rack
+	if(cFirst == '\0') // should never end up here with empty rack
+		throw 92;
 
 	if (mapLetters.find(cFirst) == mapLetters.end()){
 		// this letter is not in the map, probably since é and e are the same in calls to wcscoll

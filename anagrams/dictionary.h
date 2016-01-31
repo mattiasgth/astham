@@ -22,7 +22,7 @@ typedef std::wstring String;
 class StringList : public std::list<String>
 {
 public:
-	bool ContainsString(LPCWSTR sz){
+	bool ContainsString(const wchar_t* sz){
 		iterator it;
 
 		for (it = begin(); it != end(); it++){
@@ -145,11 +145,13 @@ public:
 		DFT_TEXT,
 		DFT_BINARY
 	}DICTIONARY_FILE_TYPE;
-	DICTIONARY_FILE_TYPE DetectFileType(String strPath);
-	DICT_ERROR ReadTextFile(String strPath);
-	DICT_ERROR ReadBinaryFile(String strPath);
+	DICTIONARY_FILE_TYPE DetectFileType(std::string& strPath);
+	DICT_ERROR ReadTextFile(std::string& strPath, bool fIsUTF16);
+	DICT_ERROR ReadBinaryFile(std::string& strPath);
 	DICT_ERROR SaveBinaryFile(std::string& strPath);
-
+	int GetNodeCount();
+	int GetStoredCount();
+	void SetVerbose(bool fset){ m_verbose = fset; };
 protected:
 	DICT_GENERATE_CALLBACK m_pfnCallback;
 	unsigned long m_dwCookie;
@@ -192,5 +194,6 @@ protected:
 	unsigned long m_decisionbits;
 	int m_decisionpos;
 	unsigned m_maxResults;
+	bool m_verbose;
 };
 

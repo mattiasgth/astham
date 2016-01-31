@@ -12,8 +12,16 @@
 #include <algorithm>
 #include <map>
 #include <locale>
+#ifdef WIN32
 #include <io.h>
 #include <fcntl.h>
+#endif
+
+// naive but portable
+inline int safe_wtoi(const wchar_t *str)
+{
+  return (int)wcstol(str, 0, 10);
+}
 
 // naive but portable
 std::string naiveWideToChar(std::wstring& input){
@@ -21,13 +29,14 @@ std::string naiveWideToChar(std::wstring& input){
 	for (std::wstring::iterator it = input.begin(); it != input.end(); it++){
 		int c = (int)*it;
 		if ((c > 127) || (c < 0))
-			throw std::exception("character out of range for naive conversion");
+			throw std::logic_error("character out of range for naive conversion");
 		rslt += (char)c;
 	}
 	return rslt;
 }
-std::string naiveWideToChar(const WCHAR* input){
-	return naiveWideToChar(std::wstring(input));
+std::string naiveWideToChar(const wchar_t* input){
+	std::wstring s(input);
+	return naiveWideToChar(s);
 }
 
 class AsthamApplication : public Application
@@ -74,25 +83,31 @@ void AsthamApplication::PrintUsage()
 	std::cerr << "  -g      generate all possible words from the letters in <expression>" << std::endl;
 	std::cerr << "  -m      limit number of results to <n>" << std::endl;
 	std::cerr << "  -c      save compiled dictionary as <file>" << std::endl;
+	std::cerr << "  -w      text input is encoded as UTF-16 (default UTF-8)" << std::endl;
+	std::cerr << "  -v      verbose mode" << std::endl;
 }
 
 int AsthamApplication::Run(int argc, _TCHAR* argv[])
 {
 	// program arguments
-	String strDictionaryFile;
+	std::string strDictionaryFile;
 	String strExpression;
 	std::string strOutputFile;
-	std::string strLocale("German_germany");
+	std::string strLocale("C");
 	bool fInteractive = false;
 	bool fCompileDictionary = false;
+	bool fVerbose = false;
+	bool fTextInputIsUTF16 = false;
 	PGM_ACTION whatToDo = PGM_COMPLETE;
 	int nSeed = (int)time(NULL);
 	unsigned maxResults = 256;
 
+#ifdef WIN32
 	// we want to output UTF8 strings
 	_setmode(_fileno(stdout), _O_U8TEXT);
 	// and read UTF16 strings
 	_setmode(_fileno(stdin), _O_WTEXT);
+#endif
 
 	if (argc < 2){
 		PrintUsage();
@@ -106,21 +121,25 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 		switch (*cp){
 		default:
 			if (strDictionaryFile.empty())
-				strDictionaryFile = argv[i];
-			else if (strExpression.empty())
+				strDictionaryFile = naiveWideToChar(argv[i]);
+			else if (strExpression.empty()){
 				strExpression = argv[i];
+			}
 			break;
 		case '/':
 		case '-':
 			cp++;
 			switch (*cp){
+			case 'v':
+				fVerbose = true;
+				break;
 			case 'm':
 				i++;
 				if (!argv[i]){
 					ReportError("fatal: missing -m output limit parameter");
 					return -45;
 				}
-				maxResults = _wtoi(argv[i]);
+				maxResults = safe_wtoi(argv[i]);
 				break;
 			case 's':
 				i++;
@@ -128,10 +147,13 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 					ReportError("fatal: missing -s random seed parameter");
 					return -45;
 				}
-				nSeed = _wtoi(argv[i]);
+				nSeed = safe_wtoi(argv[i]);
 				break;
 			case 'f':
 				whatToDo = PGM_FIND_FIRST;
+				break;
+			case 'w':
+				fTextInputIsUTF16 = true;
 				break;
 			case 'g':
 				whatToDo = PGM_GENERATE_ONLY;
@@ -180,13 +202,25 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 			break;
 		};
 	}
+	if(fVerbose){
+		std::cerr << "expression is ";
+		if(strExpression.empty())
+			std::cerr << "<empty>";
+		else
+			std::wcerr << strExpression;
+		std::cerr << std::endl;
+	}
 	std::locale* ploc = NULL;
+	if(fVerbose){
+		std::cerr << "setting locale " << strLocale << std::endl;
+	}
 	try{
-		ploc = new std::locale(strLocale);
+		ploc = new std::locale(strLocale.c_str());
 		std::locale::global(*ploc);
 	}
 	catch (std::runtime_error& e){
 		std::cerr << "error: " << e.what() << std::endl;
+		std::cerr << "when trying to create a locale named '" << strLocale << "'" << std::endl;
 		return -623;
 	}
 
@@ -219,17 +253,25 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 	StringList lst;
 	StringList lstResult;
 	m_pDict = new Dictionary(nSeed);
-	switch (m_pDict->DetectFileType(strDictionaryFile.c_str())){
+	m_pDict->SetVerbose(fVerbose);
+	switch (m_pDict->DetectFileType(strDictionaryFile)){
 		default:
 		case Dictionary::DFT_NONE:
-			ReportError("fatal: cannot read that input dictionary");
+			ReportError("fatal: cannot read that input dictionary, DetectFileType returned DFT_NONE");
 			return -71;
 		case Dictionary::DFT_TEXT:
-			m_pDict->ReadTextFile(argv[1]);
+			if(fVerbose)
+				std::cerr << "reading text file ..." << std::endl;
+			m_pDict->ReadTextFile(strDictionaryFile, fTextInputIsUTF16);
 			break;
 		case Dictionary::DFT_BINARY:
-			m_pDict->ReadBinaryFile(argv[1]);
+			if(fVerbose)
+				std::cerr << "reading binary file ..." << std::endl;
+			m_pDict->ReadBinaryFile(strDictionaryFile);
 			break;
+	}
+	if(fVerbose){
+		std::cerr << "done, having " << m_pDict->GetNodeCount() << " nodes and " << m_pDict->GetStoredCount() << " stored items." << std::endl;
 	}
 	if (fCompileDictionary){
 		std::cerr << "Saving dictionary, ";
