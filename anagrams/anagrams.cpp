@@ -281,13 +281,16 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 	}
 	AnagramResult rslt;
 	try{
-		for (;;){
+		bool fKeepLooping = true;
+		while (fKeepLooping){
 			if (fInteractive){
 				// wcin won't work as expected
 				String s;
 				while (s.empty()){
-					if (!std::getline(std::wcin, s))
+					if (!std::getline(std::wcin, s)){
+						fKeepLooping = false;
 						break;
+					}
 				}
 				strExpression = s;
 			}

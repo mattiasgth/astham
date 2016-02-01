@@ -9,42 +9,6 @@
 #include <algorithm>
 #include <iostream>
 
-#ifndef __STDC_LIB_EXT1__
-
-typedef int errno_t;
-
-errno_t fopen_s(FILE** streamptr,
-	const char* filename,
-	const char* mode)
-{
-	*streamptr = fopen(filename, mode);
-	return *streamptr ? 0 : errno;
-}
-
-int MulDiv(
-  int nNumber,
-  int nNumerator,
-  int nDenominator
-)
-{
-	return nNumber*nNumerator/nDenominator;
-}
-
-wchar_t *_wcsdup(
-   const wchar_t *strSource 
-)
-{
-	size_t s = wcslen(strSource);
-	wchar_t* rslt = (wchar_t*)malloc(sizeof(wchar_t)*(s+1));
-	wcscpy(rslt, strSource);
-	return rslt;
-}
-
-
-#endif
-
-
-
 Dictionary::Dictionary(int seed)
  :  m_gen(seed),
 	m_pTree(NULL),
@@ -165,28 +129,13 @@ DICT_ERROR Dictionary::ReadTextFile(std::string& strPath, bool fIsUTF16)
 
 	/* test for Unicode signatures */
 	size_t r;
-	int tst;
 	unsigned lineno = 0;
 	size_t start = 0;
 
 	r = fread(buf, 1, 512, fp);
-#ifdef WIN32
-	if (!IsTextUnicode(wp, r, &tst)){
-		/* text mode will do ANSI->Unicode conversion */
-		fclose(fp);
-		_tfopen_s(&fp, strPath.c_str(), _T("r"));
-	}
-	else{
-		/* binary mode will do no conversion */
-		rewind(fp);
-		if (tst & IS_TEXT_UNICODE_SIGNATURE){
-			start = 2;
-		}
-	}
-#else
+
 	if(buf[0] == 0xff && buf[1] == 0xfe)
 		start = 2;
-#endif
 	fseek(fp, start, SEEK_SET);
 	if(m_verbose)
 		std::cerr << "reading from offset " << start << std::endl;
@@ -244,11 +193,7 @@ bool Dictionary::ParseTextLine(const wchar_t* pszLine)
 		psz++;
 	}
 	return true;
-
-#ifndef WIN32
-	std::cerr << "Error: ParseTextLine not implemented on this platform" << std::endl;
-	return false;
-#else
+#if 0
 	// TODO: use isalpha or similar instead
 	static LPCWSTR kszSeparators = L" .;,:!?\"#¤%&/()=\\+}{}[]$£@0123456789\t\r\n";
 	// should do this with stl, but who knows
@@ -523,7 +468,7 @@ int Dictionary::Combine(CharacterRack& rack, AnagramResult& lst_partial, Anagram
 					lst_out.MergeResult(recRslt);
 				}
 				if ((m_pfnCallback) && ((i % 50) == 49)){
-					if (!m_pfnCallback(MulDiv(i, 100, vs.size()), m_dwCookie))
+					if (!m_pfnCallback((i*100) / vs.size(), m_dwCookie))
 						break;
 				}
 			}

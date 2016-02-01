@@ -215,15 +215,14 @@ span.description {
 }
 
 .infotext p + h4 {
-
   margin-top: 28px;
-
 }
 
-span.keyboard-key {
-
-    font-family: Courier New, Courier, monospace;
-
-    font-size:smaller;
-
+kbd {
+    background: #f7f7f7;
+    border: 1px solid #ddd;
+    border-radius: 0.1875em;
+    padding: 2px;
+    white-space: nowrap;
+    color: #000;
 }

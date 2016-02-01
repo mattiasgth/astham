@@ -1,5 +1,4 @@
-﻿/// <reference path="jquery/jqueryui.d.ts"/>
-// add center() to JQuery
+﻿// add center() to JQuery
 function jQueryCenter(el, parent) {
     el.css("position", "absolute");
     el.css("top", Math.max(0, (($(parent).height() - $(el).outerHeight()) / 2) +
@@ -12,8 +11,11 @@ function containsSameLetter(s1, s2) {
     if (s1.length != s2.length)
         return false;
     return s1.split('').sort().join('') == s2.split('').sort().join('');
-}
-;
+};
+
+declare function browserSupported(): boolean;
+declare var Modernizr : any;
+
 var oActive, g_lastX, g_lastY, nZFocus = 100;
 var g_fLeftButtonDown = false;
 var g_fIsTracking = false;
@@ -78,7 +80,7 @@ var Tiles = (function () {
 var g_selectedTiles = new Tiles();
 function makeLetter(parent, letter) {
     var idCounter = String(creationCounter++);
-    var el = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    var el: SVGSVGElement = <SVGSVGElement>document.createElementNS("http://www.w3.org/2000/svg", "svg");
     el.id = "svg" + idCounter;
     el.setAttribute("class", "tile selectable");
     el.x.baseVal.newValueSpecifiedUnits(SVGLength.SVG_LENGTHTYPE_PX, g_insertionPoint.x);
@@ -89,7 +91,7 @@ function makeLetter(parent, letter) {
     g_anchorPoint = g_insertionPoint;
     // add rectangle
     var nsUri = "http://www.w3.org/2000/svg";
-    var r = document.createElementNS(nsUri, "rect");
+    var r: SVGRectElement = <SVGRectElement>document.createElementNS(nsUri, "rect");
     r.id = "rect" + idCounter;
     r.className.baseVal = "tileBkg";
     r.setAttribute("height", "38");
@@ -98,7 +100,7 @@ function makeLetter(parent, letter) {
     r.setAttribute("ry", "4");
     el.appendChild(r);
     // add tile text
-    var t = document.createElementNS(nsUri, "text");
+    var t: SVGTextElement = <SVGTextElement>document.createElementNS(nsUri, "text");
     t.id = "text" + idCounter;
     t.setAttribute("class", "tileText");
     t.setAttribute("x", "6");
@@ -106,7 +108,7 @@ function makeLetter(parent, letter) {
     t.textContent = letter;
     el.appendChild(t);
     // add lock icon
-    var i = document.createElementNS(nsUri, "image");
+    var i: SVGImageElement = <SVGImageElement>document.createElementNS(nsUri, "image");
     i.id = "img" + idCounter;
     i.className.baseVal = "invisible";
     i.setAttribute("x", "28");
@@ -116,10 +118,10 @@ function makeLetter(parent, letter) {
     i.setAttributeNS('http://www.w3.org/1999/xlink', 'href', 'images/locked.png');
     el.appendChild(i);
     // note: JQuery selectable(), draggable() does not work for SVG
-    el.onmousedown = function (oPssEvt1) {
+    el.onmousedown = function (oPssEvt1 : MouseEvent) {
         var me = this;
         var bExit = true;
-        var oMsEvent1 = oPssEvt1 || window.event;
+        var oMsEvent1: MouseEvent = oPssEvt1 || <MouseEvent>window.event;
         for (var iNode = (oMsEvent1.target || oMsEvent1.srcElement); iNode; iNode = iNode.parentNode) {
             if (iNode === this) {
                 bExit = false;
@@ -167,25 +169,26 @@ function getSelectedNonLockedTiles() {
     });
     return rslt;
 }
-function hackAnimate($el, attrs, speed) {
+
+function hackAnimate(el, attrs, speed) {
     // duration in ms
     speed = speed || 200;
     var start = {}, timeout = 20, steps = Math.floor(speed / timeout), cycles = steps; // counter for cycles left
     // populate the object with the initial state
     $.each(attrs, function (k, v) {
-        start[k] = $el.attr(k);
+        start[k] = el.attr(k);
     });
     (function loop() {
         $.each(attrs, function (k, v) {
             var pst = (v - start[k]) / steps; // how much to add at each step
-            $el.attr(k, function (i, old) {
+            el.attr(k, function (i, old) {
                 return +old + pst; // add value do the old one
             });
         });
         if (--cycles)
             setTimeout(loop, timeout);
         else
-            $el.attr(attrs);
+            el.attr(attrs);
     })(); // start the loop
 }
 function outputAnagramAtIndex(rslt, available) {
@@ -246,28 +249,15 @@ function focusBoard() {
 window.onload = function () {
     // Animate loader off screen
     if (!browserSupported()) {
-        var divDlg = $("<div id = 'dialog' title='Update Your Browser'>Your browser does not support SVG graphics. Cannot continue!</div>");
-        $("#board").append(divDlg);
-        $("#dialog").dialog({
-            dialogClass: "no-close",
-            autoOpen: false,
-            buttons: [
-                {
-                    text: "OK",
-                    click: function () {
-                        $(this).dialog("close");
-                    }
-                }
-            ]
-        });
-        $("#dialog").dialog("open");
+        var modal: any = $("#sysfailModal");
+        modal.modal("show");
         return;
     }
-    document.onmousemove = function (oPssEvt2) {
+    document.onmousemove = function (oPssEvt2: MouseEvent) {
         if (!g_fLeftButtonDown) {
             return;
         }
-        var oMsEvent2 = oPssEvt2 || window.event;
+        var oMsEvent2 = oPssEvt2 || <MouseEvent>window.event;
         oMsEvent2.preventDefault();
         var dx = oMsEvent2.clientX - g_lastX;
         var dy = oMsEvent2.clientY - g_lastY;
@@ -355,24 +345,14 @@ window.onload = function () {
         }
     });
     // set up buttons and similar
-    $("button#clear").button({
-        icons: {
-            primary: "ui-icon-trash"
-        },
-        text: false
-    }).click(function (event) {
+    $("button#clear").click(function (event) {
         event.preventDefault();
         g_selectedTiles.clear();
         $(".tile").remove();
         focusBoard();
         g_insertionPoint.goHome();
     });
-    $("button#lock").button({
-        icons: {
-            primary: "ui-icon-locked"
-        },
-        text: false
-    }).click(function (event) {
+    $("button#lock").click(function (event) {
         event.preventDefault();
         g_selectedTiles.tiles.forEach(function (e) {
             var imgElem = e.getElementsByTagName("image").item(0);
@@ -387,12 +367,7 @@ window.onload = function () {
         });
         focusBoard();
     });
-    $("button#lookup").button({
-        icons: {
-            primary: "ui-icon-transfer-e-w"
-        },
-        text: false
-    }).click(function (event) {
+    $("button#lookup").click(function (event) {
         event.preventDefault();
         // get the selected letters
         var availableTiles = getNonLockedTiles();
