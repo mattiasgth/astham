@@ -7,7 +7,18 @@
  *
  */
 
-define("EXECUTABLE_APP", "../Release/anagrams.exe");
+$g_strOSName = php_uname();
+if(strstr($g_strOSName, "Windows")==FALSE){
+	define("WIN32", FALSE);
+	define("DICTIONARY_PATH", "./assets/");
+	define("EXECUTABLE_APP", "/usr/local/bin/anagrams");
+}
+else{
+	define("WIN32", TRUE);
+	define("EXECUTABLE_APP", "../Release/anagrams.exe");
+	define("DICTIONARY_PATH", "..\\anagrams\\assets\\");
+}
+
 
 require_once 'api.class.php';
 
@@ -93,32 +104,33 @@ function utf8_exec($cmd, &$output=null, &$return=null)
 
 class AsthamAPI extends API
 {
-  protected $User;
+	protected $User;
 
-  public function __construct($request, $origin) {
-  parent::__construct($request);
+	public function __construct($request, $origin) {
+		parent::__construct($request);
 
-  $User = new stdclass();
-  $User->name = "mattias";
+		$User = new stdclass();
+		$User->name = "mattias";
 
-if(false){
-  // Abstracted out for example
-  $APIKey = new Models\APIKey();
-  $User = new Models\User();
+		if(false){
+			// Abstracted out for example
+			$APIKey = new Models\APIKey();
+			$User = new Models\User();
 
-  if (!array_key_exists('apiKey', $this->request)) {
-    throw new Exception('No API Key provided');
-  } else if (!$APIKey->verifyKey($this->request['apiKey'], $origin)) {
-    throw new Exception('Invalid API Key');
-  } else if (array_key_exists('token', $this->request) &&
-    !$User->get('token', $this->request['token'])) {
+			if (!array_key_exists('apiKey', $this->request)) {
+				throw new Exception('No API Key provided');
+			}
+			else if (!$APIKey->verifyKey($this->request['apiKey'], $origin)) {
+				throw new Exception('Invalid API Key');
+			}
+			else if (array_key_exists('token', $this->request) &&
+				!$User->get('token', $this->request['token'])) {
+				throw new Exception('Invalid User Token');
+			}
+		}
 
-  throw new Exception('Invalid User Token');
-  }
-  }
-
-$this->User = $User;
-}
+		$this->User = $User;
+	}
 
 	/**
 	* Example of an Endpoint
@@ -126,39 +138,50 @@ $this->User = $User;
 	protected function example() {
 		if ($this->method == 'GET') {
 			return "Your name is " . $this->User->name;
-		} else {
+		}
+		else {
 			return "Only accepts GET requests";
 		}
 	}
 
-    protected function mb_str_shuffle($str) {
-        $tmp = preg_split("//u", $str, -1, PREG_SPLIT_NO_EMPTY);
-        shuffle($tmp);
-        return join("", $tmp);
-    }
+	protected function mb_str_shuffle($str) {
+		$tmp = preg_split("//u", $str, -1, PREG_SPLIT_NO_EMPTY);
+		shuffle($tmp);
+		return join("", $tmp);
+	}
 	
 	protected function a(array $params){
 		if ($this->method == 'GET') {
 			$result = array();
 			$expression = urldecode($this->verb);
 			$outputArray = array();
-            $dictionary = "..\\anagrams\\assets\\svenska.fzi";
-            if(isset($params) && isset($params[0])){
-                switch($params[0]){
-                    case 'en':
-                    $dictionary = "..\\anagrams\\assets\\english.fzi";
-                    break;
-                }
-            }
-           
+			$locale = "sv_SE.UTF8";
+			$dictionary = "svenska.fzi";
+			if(isset($params) && isset($params[0])){
+				switch($params[0]){
+				case 'da':
+					$dictionary = "dansk.fzi";
+					break;
+				case 'en':
+					$dictionary = "english.fzi";
+					break;
+				}
+			}
+			$dictionary = DICTIONARY_PATH . $dictionary;
+
 			if(!file_exists(EXECUTABLE_APP)){
 				for($i = 0; $i < 10; $i++){
 					array_push($outputArray, $this->mb_str_shuffle($expression));
 				}
 			}
 			else{
-				$cmd = "..\\Release\\anagrams.exe $dictionary \"$expression\"";
+				$cmd = EXECUTABLE_APP . " $dictionary \"$expression\" -l $locale";
+			if(WIN32){
 				utf8_exec($cmd, $outputArray, $execresult);
+			}
+			else{
+				exec($cmd, $outputArray, $execresult);
+			}
 			}
 			$result['anagrams'] = $outputArray;
 			$result['success'] = true;
@@ -182,14 +205,31 @@ $this->User = $User;
 	}
 } // class AsthamAPI
 
-// Requests from the same server don't have a HTTP_ORIGIN header
-if (!array_key_exists('HTTP_ORIGIN', $_SERVER)) {
-    $_SERVER['HTTP_ORIGIN'] = $_SERVER['SERVER_NAME'];
-}
 
-try {
-    $API = new AsthamAPI($_REQUEST['request'], $_SERVER['HTTP_ORIGIN']);
-    echo $API->processAPI();
-} catch (Exception $e) {
-    echo json_encode(Array('error' => $e->getMessage()));
+if(php_sapi_name() == 'cli'){
+	// fake a HTTP request
+	$_SERVER['REQUEST_METHOD'] = 'GET';
+	$expression = "EXAMPLE";
+	$language = "en";
+	if(isset($argv[1])){
+		$expression = $argv[1];
+	}
+	if(isset($argv[2])){
+		$language = $argv[2];
+	}
+	$API = new AsthamAPI("a/$expression/$language", "localhost");
+	echo $API->processAPI();
+}
+else{
+	// Requests from the same server don't have a HTTP_ORIGIN header
+	if (!array_key_exists('HTTP_ORIGIN', $_SERVER)) {
+		$_SERVER['HTTP_ORIGIN'] = $_SERVER['SERVER_NAME'];
+	}
+
+	try {
+		$API = new AsthamAPI($_REQUEST['request'], $_SERVER['HTTP_ORIGIN']);
+		echo $API->processAPI();
+	} catch (Exception $e) {
+		echo json_encode(Array('error' => $e->getMessage()));
+	}
 }
