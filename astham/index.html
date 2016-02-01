@@ -5,11 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
     <title>Tanto Anagram</title>
-    <link rel="stylesheet" href="jquery/jquery-ui.min.css">
-    <!-- Bootstrap core CSS -->
+    <link href="jquery/jquery-ui.min.css" rel="stylesheet">
     <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet" />
     <link href="bootstrap/css/bootstrap-select.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="app.css" type="text/css" />
+    <link href="app.css" rel="stylesheet" type="text/css" />
     </head>
 <body>
     <nav class="navbar navbar-inverse">
@@ -41,6 +40,7 @@
             <select id="lang" class="selectpicker">
                 <option value="sv">Swedish</option>
                 <option value="en" selected="selected">English</option>
+                <option value="da">Danish</option>
             </select>
         </div>
         <div id="board" class="row green" tabindex="0">
@@ -55,14 +55,14 @@
                 <h4>Instructions</h4>
                 <p>
                     To start making anagrams, click the <span class="glyphicon glyphicon-refresh" aria-hidden="false"></span> button in the toolbar.
-                    You can select and rearrange letters using the mouse, or press <span class="keyboard-key">DEL</span> to delete the selected letters.
+                    You can select and rearrange letters using the mouse, or press <kbd>DEL</kbd> to delete the selected letters.
                     If you click the <span class="glyphicon glyphicon-remove"></span> button in the toolbar, all letters are erased.
-                    You can also remove all letters by pressing <span class="keyboard-key">ESC</span> on the keyboard.
+                    You can also remove all letters by pressing <kbd>ESC</kbd> on the keyboard.
                     To lock certain letters, select them using the mouse and click the <span class="glyphicon glyphicon-lock"></span> button in the toolbar.
                 </p>
                 <p>
                     The anagrams returned come in a certain sequence, and when you click the <span class="glyphicon glyphicon-refresh" aria-hidden="false"></span> button,
-                    you collect the next anagram in the sequence. If you want to go back to a previous anagram in the sequence, hold down <span class="keyboard-key">SHIFT</span> on your keyboard when you click.
+                    you collect the next anagram in the sequence. If you want to go back to a previous anagram in the sequence, hold down <kbd>SHIFT</kbd> on your keyboard when you click.
                 </p>
             </div>
             <div class="col-lg-6">
@@ -74,8 +74,8 @@
                     However, the main purpose of making anagrams is of course pure recreation.
                 </p>
                 <p>
-                    In modern times, anagrams has been used by surrealist poets such as <a href="https://en.wikipedia.org/wiki/André Breton">Andre Breton</a> and <a href="https://en.wikipedia.org/wiki/Gunnar Ekelöf">Gunnar Ekelöf</a>
-                    One very common application of the anagram idea is the refrigerator magnet poetry kits, where each magnet in the kit correspond to a certain word.
+                    In modern times, anagrams has been used by surrealist poets such as <a href="https://en.wikipedia.org/wiki/André Breton">Andre Breton</a> and <a href="https://en.wikipedia.org/wiki/Gunnar Ekelöf">Gunnar Ekelöf</a>.
+                    One very common application of the anagram idea is the refrigerator magnet poetry kits, where each magnet in the kit corresponds to a certain word.
                 </p>
         </div>
         </div>
@@ -102,8 +102,24 @@
 
         </div>
     </div>
+    <!-- browser not supported -->
+    <div class="modal fade" id="sysfailModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="exampleModalLabel">Browser not supported</h4>
+                </div>
+                <div class="modal-body">
+                    You need to update your browser to use this page.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="jquery/jquery-1.12.0.min.js"></script>
-    <script src="jquery/jquery-ui.min.js"></script>
     <script src="bootstrap/js/bootstrap.min.js"></script>
     <script src="bootstrap/js/bootstrap-select.min.js"></script>
     <script src="modernizr.js"></script>

@@ -21,6 +21,7 @@
     <Content Include="api.class.php" />
     <Content Include="api.php" />
     <Content Include="app.css" />
+    <Content Include="images\locked.png" />
     <Content Include="images\seamless_green.jpg" />
     <Content Include="index.html" />
     <Content Include="modernizr.js" />
@@ -28,8 +29,10 @@
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="app.ts" />
+    <TypeScriptCompile Include="Scripts\typings\jquery\jquery.d.ts" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="packages.config" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>
