@@ -122,7 +122,7 @@ function makeLetter(parent, letter) {
         var me = this;
         var bExit = true;
         var oMsEvent1: MouseEvent = oPssEvt1 || <MouseEvent>window.event;
-        for (var iNode = (oMsEvent1.target || oMsEvent1.srcElement); iNode; iNode = iNode.parentNode) {
+        for (var iNode : Node = (<Node>oMsEvent1.target || oMsEvent1.srcElement); iNode; iNode = iNode.parentNode) {
             if (iNode === this) {
                 bExit = false;
                 oActive = iNode;
@@ -170,7 +170,7 @@ function getSelectedNonLockedTiles() {
     return rslt;
 }
 
-function hackAnimate(el, attrs, speed) {
+function hackAnimateAttrs(el, attrs, speed) {
     // duration in ms
     speed = speed || 200;
     var start = {}, timeout = 20, steps = Math.floor(speed / timeout), cycles = steps; // counter for cycles left
@@ -191,6 +191,35 @@ function hackAnimate(el, attrs, speed) {
             el.attr(attrs);
     })(); // start the loop
 }
+
+function hackAnimateXY(el: SVGElement, tgtx: number, tgty: number, speed: number) {
+    // duration in ms
+    speed = speed || 200;
+    var startX: number = parseInt(el.getAttribute('x'));
+    var startY: number = parseInt(el.getAttribute('y'));
+    var timeout = 20, steps = Math.floor(speed / timeout), cycles = 0;
+    var dx = (tgtx - startX) / steps;
+    var dy = (tgty - startY) / steps;
+    var up = Math.random() > 0.5 ? 1 : -1;
+    var denom: number = Math.pow((tgtx - startX), 2);
+    if (denom === 0)
+        denom = 1;
+    (function loop() {
+        var x = startX + dx * cycles;
+        var yinc = up * 16 * ((x - startX) * (x - tgtx)) / denom;
+        el.setAttribute('x', x.toString());
+        el.setAttribute('y', (startY + yinc + dy * cycles).toString());
+        if (cycles++ < steps) {
+            setTimeout(loop, timeout);
+        }
+        else {
+            el.setAttribute('x', tgtx.toString());
+            el.setAttribute('y', tgty.toString());
+        }
+    })(); // start the loop
+}
+
+
 function outputAnagramAtIndex(rslt, available) {
     var minX = 999999;
     var minY = 999999;
@@ -213,7 +242,7 @@ function outputAnagramAtIndex(rslt, available) {
                 var svgElem = available.tiles[j];
                 var textElem = (svgElem.getElementsByTagName("text").item(0));
                 if (textElem.textContent == c) {
-                    hackAnimate($("#" + svgElem.id), { x: g_insertionPoint.x, y: g_insertionPoint.y }, 200 // optional duration in ms, defaults to 400
+                    hackAnimateXY(svgElem, g_insertionPoint.x, g_insertionPoint.y, 200 // optional duration in ms, defaults to 400
                         );
                     g_insertionPoint.moveRight();
                     if (g_insertionPoint.x >= board.clientWidth - 46) {
@@ -344,6 +373,37 @@ window.onload = function () {
             makeLetter(document.getElementById("parentSVG"), s.toUpperCase());
         }
     });
+    // populate language selectpicker
+    var xhr = new XMLHttpRequest();
+    var cmd = locationHREFWithoutResource() + "api/v1/langs";
+    xhr.open("GET", cmd, true);
+    xhr.onreadystatechange = function () {
+        if (xhr.status != 200) {
+            if (xhr.status > 0) {
+                alert("Server error " + xhr.status + "\n" + xhr.statusText);
+                xhr.abort();
+            }
+            return;
+        }
+        if (xhr.readyState == 4) {
+            var headers = xhr.getAllResponseHeaders();
+            // skip any BOM characters at start of responseText
+            var fixup = "";
+            var first_character = 0;
+            for (var i = first_character; i < xhr.responseText.length; i++) {
+                fixup += xhr.responseText[i];
+            }
+            var rslt = JSON.parse(fixup);
+            var add: string = "";
+            rslt['supported'].forEach(function (k, v) {
+                add += "<option value='" + k.code + "'>" + k.name + "</option>\n";
+            });
+            var dd : any = $("#lang");
+            dd.append(add);
+            dd.selectpicker('refresh');
+        }
+    };
+    xhr.send();
     // set up buttons and similar
     $("button#clear").click(function (event) {
         event.preventDefault();
@@ -412,7 +472,6 @@ window.onload = function () {
         xhr.open("GET", cmd, true);
         // change to spinning button icon
         $("#spinning-refresh").addClass("glyphicon-spin");
-        xhr.send();
         // add the listeners
         var lookup = $("button#lookup");
         var clear = $("button#clear");
@@ -426,6 +485,9 @@ window.onload = function () {
             detach();
             xhr.abort();
         }
+
+        xhr.send();
+
         clear.on("click", cancelling);
         lookup.on("click", cancelling);
         xhr.onreadystatechange = function () {
@@ -445,6 +507,10 @@ window.onload = function () {
                 }
                 var rslt = JSON.parse(fixup);
                 detach();
+                if (rslt['success'] != true) {
+                    alert("Error when calling anagram generator:\n" + (rslt['error']||"no error message"));
+                    return;
+                }
                 if (rslt.anagrams.length == 0) {
                     alert("Cannot make anything of that");
                     return;

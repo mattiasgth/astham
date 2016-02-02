@@ -3,6 +3,7 @@
 #include <map>
 #include <list>
 #include <vector>
+#include <chrono>
 #include <sstream>
 #include <fzindex.h>
 
@@ -195,5 +196,10 @@ protected:
 	int m_decisionpos;
 	unsigned m_maxResults;
 	bool m_verbose;
+
+	// timeout protection
+	void DoTimeoutCheck(); // may throw a runtime_exception
+	unsigned m_maxMilliseconds;
+	std::chrono::steady_clock::time_point m_startedGenerate;
 };
 

@@ -5,7 +5,6 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
     <title>Tanto Anagram</title>
-    <link href="jquery/jquery-ui.min.css" rel="stylesheet">
     <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet" />
     <link href="bootstrap/css/bootstrap-select.min.css" rel="stylesheet" />
     <link href="app.css" rel="stylesheet" type="text/css" />
@@ -38,9 +37,6 @@
             <button type="button" class="btn btn-default has-spinner" id="lookup"><span id="spinning-refresh" class="glyphicon glyphicon-refresh" aria-hidden="true"></span></button>
             <button type="button" class="btn btn-default" id="settings" data-toggle="modal" data-target="#settingsModal"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></button>
             <select id="lang" class="selectpicker">
-                <option value="sv">Swedish</option>
-                <option value="en" selected="selected">English</option>
-                <option value="da">Danish</option>
             </select>
         </div>
         <div id="board" class="row green" tabindex="0">
@@ -123,6 +119,6 @@
     <script src="bootstrap/js/bootstrap.min.js"></script>
     <script src="bootstrap/js/bootstrap-select.min.js"></script>
     <script src="modernizr.js"></script>
-    <script src="app.js"></script>
+    <script src="app.min.js"></script>
 </body>
 </html>

@@ -8,6 +8,7 @@
 #include <map>
 #include <algorithm>
 #include <iostream>
+#include <chrono>
 
 Dictionary::Dictionary(int seed)
  :  m_gen(seed),
@@ -15,7 +16,8 @@ Dictionary::Dictionary(int seed)
 	m_pfnCallback(NULL),
 	m_dwCookie(0),
 	m_decisionpos(0),
-	m_maxResults(256)
+	m_maxResults(256),
+	m_maxMilliseconds(8000)
 {
 	m_decisionbits = m_dist(m_gen);
 }
@@ -296,6 +298,8 @@ int Dictionary::Generate(String& strInput, AnagramResult& rsltOut, bool fGenerat
 	bool fBreak = false;
 	StringList::iterator slit;
 
+	m_startedGenerate = std::chrono::steady_clock::now();
+
 	if (m_pTree == NULL){
 		ReportError("no dictionary loaded");
 		return 2;
@@ -388,6 +392,8 @@ int Dictionary::ReGenerate(size_t pos, AnagramResult& rslt, CharacterRack& rack,
 		// go down the tree
 		ReGenerate(fn.m_pos, rslt, rack, s);
 		rack.Uncross(c, rackPosition);
+		// timeout check
+		DoTimeoutCheck();
 	}
 
 	// this key is not on the rack, so leave it all to the left and right nodes
@@ -442,9 +448,14 @@ int Dictionary::Combine(CharacterRack& rack, AnagramResult& lst_partial, Anagram
 	// are found
 	for (i = 0; i < vs.size(); i++){
 		for (j = 0; j < vs[i].size(); j++){
+			if (vs[i][j] == 246){
+				auto str = vs[i];
+				int yy = 0;
+			}
 			mapLetters[vs[i][j]].push_back(i);
 		}
 	}
+
 	// make each mapping just once
 	for (CombMap::iterator it = mapLetters.begin(); it != mapLetters.end(); it++){
 		std::sort((*it).second.begin(), (*it).second.end());
@@ -481,6 +492,15 @@ int Dictionary::Combine(CharacterRack& rack, AnagramResult& lst_partial, Anagram
 	return lst_out.empty() ? 0 : 1;
 }
 
+void Dictionary::DoTimeoutCheck()
+{
+	auto diff = std::chrono::steady_clock::now() - m_startedGenerate;
+	if (std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() > m_maxMilliseconds){
+		std::cerr << "This took to long, aborting after " << m_maxMilliseconds << " ms" << std::endl;
+		throw std::runtime_error("timeout");
+	}
+}
+
 bool Dictionary::ReMakeCombines(StringArray& v, int idx, CombMap& mapLetters, CharacterRack& rack, AnagramResult& lst_out)
 {
 	// find first non-crossed letter
@@ -494,6 +514,9 @@ bool Dictionary::ReMakeCombines(StringArray& v, int idx, CombMap& mapLetters, Ch
 	cFirst = rack.FindFirstNonCrossed();
 	if(cFirst == '\0') // should never end up here with empty rack
 		throw 92;
+
+	// timeout check
+	DoTimeoutCheck();
 
 	if (mapLetters.find(cFirst) == mapLetters.end()){
 		// this letter is not in the map, probably since é and e are the same in calls to wcscoll

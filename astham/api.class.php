@@ -86,10 +86,18 @@ protected $verb = '';
         }
     }
     public function processAPI() {
-        if (method_exists($this, $this->endpoint)) {
-            return $this->_response($this->{$this->endpoint}($this->args));
+        try{
+            if (method_exists($this, $this->endpoint)) {
+                return $this->_response($this->{$this->endpoint}($this->args));
+            }
+            return $this->_response("No Endpoint: $this->endpoint", 404);
         }
-        return $this->_response("No Endpoint: $this->endpoint", 404);
+        catch(Exception $e){
+            $result = array();
+            $result['success'] = false;
+            $result['error'] = $e->getMessage();
+            return $this->_response($result);
+        }
     }
 
     private function _response($data, $status = 200) {

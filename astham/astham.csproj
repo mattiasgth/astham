@@ -25,6 +25,7 @@
     <Content Include="images\seamless_green.jpg" />
     <Content Include="index.html" />
     <Content Include="modernizr.js" />
+    <Content Include="Readme.txt" />
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>

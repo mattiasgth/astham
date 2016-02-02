@@ -1,13 +1,45 @@
 <?php
 
 /*
- * This file should be encoded as UTF8 without signature. Let's add some chinese characters so
- * our editors doesn't change that for us:
- *
+ * This file should be encoded as UTF8 without signature
  *
  */
 
-define("EXECUTABLE_APP", "../Release/anagrams.exe");
+class Dictionary
+{
+    public $code;
+    public $name;
+    public $file;
+    public $locale;
+    function __construct($c, $n, $f, $l)
+    {
+        $this->code = $c;
+        $this->name = $n;
+        $this->file = $f;
+        $this->locale = $l;
+    }
+};
+
+$g_strOSName = php_uname();
+$g_dictionaries = array();
+
+if(strstr($g_strOSName, "Windows")==FALSE){
+	define("WIN32", FALSE);
+	define("DICTIONARY_PATH", "./assets/");
+	define("EXECUTABLE_APP", "/usr/local/bin/anagrams");
+    array_push($g_dictionaries, new Dictionary("en", "English", "english.fzi", "en_US.utf8"));
+    array_push($g_dictionaries, new Dictionary("sv", "Swedish", "svenska.fzi", "sv_SE.utf8"));
+    array_push($g_dictionaries, new Dictionary("da", "Danish", "dansk.fzi", "da_DK.utf8"));
+}
+else{
+	define("WIN32", TRUE);
+	define("EXECUTABLE_APP", "..\\Release\\anagrams.exe");
+	define("DICTIONARY_PATH", "..\\anagrams\\assets\\");
+    array_push($g_dictionaries, new Dictionary("en", "English", "english.fzi", "english"));
+    array_push($g_dictionaries, new Dictionary("sv", "Swedish", "svenska.fzi", "swedish"));
+    array_push($g_dictionaries, new Dictionary("da", "Danish", "dansk.fzi", "danish"));
+}
+
 
 require_once 'api.class.php';
 
@@ -84,7 +116,7 @@ function utf8_exec($cmd, &$output=null, &$return=null)
 	}
 
 	//delete the batch-tempfile
-	unlink($tempfile);
+	// unlink($tempfile);
 	// unlink($rsltfile);
 
 	return $output;
@@ -93,72 +125,99 @@ function utf8_exec($cmd, &$output=null, &$return=null)
 
 class AsthamAPI extends API
 {
-  protected $User;
+	protected $User;
 
-  public function __construct($request, $origin) {
-  parent::__construct($request);
+	public function __construct($request, $origin) {
+		parent::__construct($request);
 
-  $User = new stdclass();
-  $User->name = "mattias";
+		$User = new stdclass();
+		$User->name = "mattias";
 
-if(false){
-  // Abstracted out for example
-  $APIKey = new Models\APIKey();
-  $User = new Models\User();
+		if(false){
+			// Abstracted out for example
+			$APIKey = new Models\APIKey();
+			$User = new Models\User();
 
-  if (!array_key_exists('apiKey', $this->request)) {
-    throw new Exception('No API Key provided');
-  } else if (!$APIKey->verifyKey($this->request['apiKey'], $origin)) {
-    throw new Exception('Invalid API Key');
-  } else if (array_key_exists('token', $this->request) &&
-    !$User->get('token', $this->request['token'])) {
+			if (!array_key_exists('apiKey', $this->request)) {
+				throw new Exception('No API Key provided');
+			}
+			else if (!$APIKey->verifyKey($this->request['apiKey'], $origin)) {
+				throw new Exception('Invalid API Key');
+			}
+			else if (array_key_exists('token', $this->request) &&
+				!$User->get('token', $this->request['token'])) {
+				throw new Exception('Invalid User Token');
+			}
+		}
 
-  throw new Exception('Invalid User Token');
-  }
-  }
-
-$this->User = $User;
-}
+		$this->User = $User;
+	}
 
 	/**
-	* Example of an Endpoint
+	* langs endpoint
+    * returns the supported languages
 	*/
-	protected function example() {
+	protected function langs() {
+        global $g_dictionaries;
 		if ($this->method == 'GET') {
-			return "Your name is " . $this->User->name;
-		} else {
+            $result = array();
+            $result['supported'] = array();
+            foreach($g_dictionaries as $d){
+                array_push($result['supported'], $d);
+            }
+            $result['success'] = true;
+			return $result;
+		}
+		else {
 			return "Only accepts GET requests";
 		}
 	}
 
-    protected function mb_str_shuffle($str) {
-        $tmp = preg_split("//u", $str, -1, PREG_SPLIT_NO_EMPTY);
-        shuffle($tmp);
-        return join("", $tmp);
-    }
+	protected function mb_str_shuffle($str) {
+		$tmp = preg_split("//u", $str, -1, PREG_SPLIT_NO_EMPTY);
+		shuffle($tmp);
+		return join("", $tmp);
+	}
 	
 	protected function a(array $params){
+        global $g_dictionaries;
 		if ($this->method == 'GET') {
 			$result = array();
 			$expression = urldecode($this->verb);
 			$outputArray = array();
-            $dictionary = "..\\anagrams\\assets\\svenska.fzi";
-            if(isset($params) && isset($params[0])){
-                switch($params[0]){
-                    case 'en':
-                    $dictionary = "..\\anagrams\\assets\\english.fzi";
-                    break;
+			$locale = "Swedish";
+			$dictionary = "svenska.fzi";
+			if(isset($params) && isset($params[0])){
+                foreach($g_dictionaries as $d){
+                    if($d->code == $params[0]){
+                        $dictionary = $d->file;
+                        $locale = $d->locale;
+                        break;
+                    }
                 }
+			}
+			$dictionary = DICTIONARY_PATH . $dictionary;
+
+            if(!file_exists($dictionary)){
+                throw new Exception("Cannot find dictionary $dictionary");
             }
-           
+
 			if(!file_exists(EXECUTABLE_APP)){
 				for($i = 0; $i < 10; $i++){
 					array_push($outputArray, $this->mb_str_shuffle($expression));
 				}
 			}
 			else{
-				$cmd = "..\\Release\\anagrams.exe $dictionary \"$expression\"";
-				utf8_exec($cmd, $outputArray, $execresult);
+				$cmd = EXECUTABLE_APP . " $dictionary \"$expression\" -l $locale";
+			    if(WIN32){
+				    utf8_exec($cmd, $outputArray, $execresult);
+			    }
+			    else{
+				    exec($cmd, $outputArray, $execresult);
+			    }
+                if($execresult != 0){
+                    throw new Exception("Undefined error when running command:\n'$cmd'\nExecresult is '$execresult'");
+                }
 			}
 			$result['anagrams'] = $outputArray;
 			$result['success'] = true;
@@ -182,14 +241,36 @@ $this->User = $User;
 	}
 } // class AsthamAPI
 
-// Requests from the same server don't have a HTTP_ORIGIN header
-if (!array_key_exists('HTTP_ORIGIN', $_SERVER)) {
-    $_SERVER['HTTP_ORIGIN'] = $_SERVER['SERVER_NAME'];
-}
 
-try {
-    $API = new AsthamAPI($_REQUEST['request'], $_SERVER['HTTP_ORIGIN']);
+if(php_sapi_name() == 'cli'){
+	// fake a HTTP request
+	$_SERVER['REQUEST_METHOD'] = 'GET';
+    echo  "Testing languages supported:\n";
+    $API = new AsthamAPI("langs", "localhost");
     echo $API->processAPI();
-} catch (Exception $e) {
-    echo json_encode(Array('error' => $e->getMessage()));
+    exit;
+    echo "Testing anagram generation:\n";
+	$expression = "EXAMPLE";
+	$language = "en";
+	if(isset($argv[1])){
+		$expression = $argv[1];
+	}
+	if(isset($argv[2])){
+		$language = $argv[2];
+	}
+	$API = new AsthamAPI("a/$expression/$language", "localhost");
+	echo $API->processAPI();
+}
+else{
+	// Requests from the same server don't have a HTTP_ORIGIN header
+	if (!array_key_exists('HTTP_ORIGIN', $_SERVER)) {
+		$_SERVER['HTTP_ORIGIN'] = $_SERVER['SERVER_NAME'];
+	}
+
+	try {
+		$API = new AsthamAPI($_REQUEST['request'], $_SERVER['HTTP_ORIGIN']);
+		echo $API->processAPI();
+	} catch (Exception $e) {
+		echo json_encode(Array('error' => $e->getMessage()));
+	}
 }

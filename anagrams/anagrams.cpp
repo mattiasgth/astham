@@ -2,6 +2,7 @@
 //
 
 #include "stdafx.h"
+#include "anagrams.h"
 #include "application.h"
 #include "dictionary.h"
 #include <fzindex.h>
@@ -16,6 +17,9 @@
 #include <io.h>
 #include <fcntl.h>
 #endif
+
+
+// TODO: Report that file wasn't found when trying to read a non-existing one
 
 // naive but portable
 inline int safe_wtoi(const wchar_t *str)
@@ -111,7 +115,7 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 
 	if (argc < 2){
 		PrintUsage();
-		return 0;
+		return ASTHAM_NOT_ENOUGH_PARAMS;
 	}
 
 
@@ -137,7 +141,7 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 				i++;
 				if (!argv[i]){
 					ReportError("fatal: missing -m output limit parameter");
-					return -45;
+					return ASTHAM_MISSING_PARAMETER;
 				}
 				maxResults = safe_wtoi(argv[i]);
 				break;
@@ -145,7 +149,7 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 				i++;
 				if (!argv[i]){
 					ReportError("fatal: missing -s random seed parameter");
-					return -45;
+					return ASTHAM_MISSING_PARAMETER;
 				}
 				nSeed = safe_wtoi(argv[i]);
 				break;
@@ -162,14 +166,14 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 				i++;
 				if (!argv[i]){
 					ReportError("fatal: missing -l locale parameter");
-					return -46;
+					return ASTHAM_MISSING_LOCALE;
 				}
 				try{
 					strLocale = naiveWideToChar(argv[i]);
 				}
 				catch (std::exception& e){
 					std::cerr << "error making string conversion of locale name: " << e.what() << std::endl;
-					return -622;
+					return ASTHAM_BAD_LOCALE_STRING_CONVERSION;
 				}
 				break;
 			case 'i':
@@ -180,14 +184,14 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 				i++;
 				if (!argv[i]){
 					ReportError("fatal: missing -c dictionary output parameter");
-					return -46;
+					return ASTHAM_MISSING_PARAMETER;
 				}
 				try{
 					strOutputFile = naiveWideToChar(argv[i]);
 				}
 				catch (std::exception& e){
 					std::cerr << "error making string conversion of file name: " << e.what() << std::endl;
-					return -62;
+					return ASTHAM_BAD_FILE_STRING_CONVERSION;
 				}
 				fCompileDictionary = true;
 				break;
@@ -197,7 +201,7 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 			default:
 				std::wcerr << L"fatal: unknown command line parameter: " << cp << std::endl;
 				PrintUsage();
-				return -1;
+				return ASTHAM_UNKNOWN_PARAMETER;
 			};
 			break;
 		};
@@ -221,17 +225,13 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 	catch (std::runtime_error& e){
 		std::cerr << "error: " << e.what() << std::endl;
 		std::cerr << "when trying to create a locale named '" << strLocale << "'" << std::endl;
-		return -623;
+		return ASTHAM_CANNOT_CREATE_LOCALE;
 	}
 
 	if (fCompileDictionary){
-		if (fInteractive){
-			ReportError("fatal: cannot have both -c and -i parameters");
-			return -2;
-		}
 		if (strOutputFile.empty()){
 			ReportError("fatal: missing -c output parameters");
-			return -4;
+			return ASTHAM_MISSING_PARAMETER;
 		}
 	}
 
@@ -246,7 +246,7 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 
 	if (strDictionaryFile.empty()){
 		ReportError("fatal: need a dictionary to work with");
-		return 0;
+		return ASTHAM_NO_DICTIONARY_PARAM;
 	}
 
 	// read dictionary file
@@ -258,7 +258,7 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 		default:
 		case Dictionary::DFT_NONE:
 			ReportError("fatal: cannot read that input dictionary, DetectFileType returned DFT_NONE");
-			return -71;
+			return ASTHAM_CANNOT_READ_INPUT_DICTIONARY;
 		case Dictionary::DFT_TEXT:
 			if(fVerbose)
 				std::cerr << "reading text file ..." << std::endl;
@@ -319,9 +319,13 @@ int AsthamApplication::Run(int argc, _TCHAR* argv[])
 				break;
 		}
 	}
+	catch (std::runtime_error& e){
+		ReportError("caught runtime exception, exiting");
+		return 0; // not an error as such
+	}
 	catch (...){
 		ReportError("unknown exception caught, exiting");
-		return -1;
+		return ASTHAM_CAUGHT_EXCEPTION;
 	}
 	// everything ok
 	return 0;
